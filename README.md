@@ -33,4 +33,8 @@ To do this,
 - we have to create a separate function class for the test dataset : **DONE**
 - save trained model : **DONE**  reference: https://www.tensorflow.org/guide/keras/save_and_serialize
 - load trained model: **DONE**
-- check if the reload train model gives the same prediction as live trained model: still in progress as validity of the saved model is failing
+- check if the reload train model gives the same prediction as live trained model: still in progress as validity of the saved model is failing. **It is fixed**
+
+**Stage-2 OUTPUT**
+
+![output](images/final_output.PNG)
