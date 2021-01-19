@@ -85,8 +85,12 @@ class test_data:
         final_output['Anomaly'].iloc[anomalous_data_indices] = 'YES'
         print('Anomaly added')
         date_string = [str(i.date()) for i in final_output.index]
-        
         final_output['Date'] = date_string
+        
+        time_string = [str(i.time()) for i in final_output.index]
+        final_output['Time'] = time_string
+        
+        
         return final_output      
         
     # Generated training sequences for use in the model.
