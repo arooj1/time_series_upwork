@@ -3,6 +3,20 @@
 # MOTIVATION
 https://keras.io/examples/timeseries/timeseries_anomaly_detection/
 
+# .py FILES
+
+## 1- test_class_functions.py
+
+All required functions are in this file. This file do complete testing on any test data. 
+
+## 2- test_execution.py
+
+Load any test dataset here and with the help of file # 1, the test dataset results are executed. 
+
+## 3- main.py 
+
+This is similar to the main code which trains the anomaly detection algorithm. 
+
 # WORK REQUIRED
 ### Project Work [Start time - 11:30 AM - 1:10 PM] 
 
