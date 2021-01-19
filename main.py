@@ -23,7 +23,8 @@ import pandas as pd
 from tensorflow import keras
 from tensorflow.keras import layers
 from matplotlib import pyplot as plt
-
+import os
+from tensorflow.keras.models import model_from_json
 """
 ## Load the data
 
@@ -147,7 +148,9 @@ model = keras.Sequential(
 )
 model.compile(optimizer=keras.optimizers.Adam(learning_rate=0.001), loss="mse")
 model.summary()
-model.save('anomaly_detection')
+
+
+
 
 """
 ## Train the model
@@ -193,6 +196,15 @@ familiar with. We will label this sample as an `anomaly`.
 
 
 """
+# SAVE MODEL 
+#model.save(os.path.join("my_model"))
+# serialize model to JSON
+model_json = model.to_json()
+with open("model.json", "w") as json_file:
+    json_file.write(model_json)
+# serialize weights to HDF5
+model.save_weights("model.h5")
+print("Saved model to disk")
 
 # Get train MAE loss.
 x_train_pred = model.predict(x_train)
@@ -238,7 +250,22 @@ plt.show()
 # Create sequences from test values.
 x_test = create_sequences(df_test_value.values)
 print("Test input shape: ", x_test.shape)
+x_test
 
+
+# LOAD MODEL
+# load json and create model
+
+json_file = open('model.json', 'r')
+loaded_model_json = json_file.read()
+json_file.close()
+loaded_model = model_from_json(loaded_model_json)
+# load weights into new model
+loaded_model.load_weights("model.h5")
+print("Loaded model from disk")
+
+
+x_train_predre = loaded_model.predict(x_train)
 # Get test MAE loss.
 x_test_pred = model.predict(x_test)
 test_mae_loss = np.mean(np.abs(x_test_pred - x_test), axis=1)
@@ -280,10 +307,13 @@ All except the initial and the final time_steps-1 data values, will appear in
 """
 
 # data i is an anomaly if samples [(i - timesteps + 1) to (i)] are anomalies
+mae = []
 anomalous_data_indices = []
 for data_idx in range(TIME_STEPS - 1, len(df_test_value) - TIME_STEPS + 1):
     if np.all(anomalies[data_idx - TIME_STEPS + 1 : data_idx]):
         anomalous_data_indices.append(data_idx)
+    mae.append(test_mae_loss[data_idx - TIME_STEPS + 1])
+        
 
 """
 Let's overlay the anomalies on the original test data plot.
@@ -294,3 +324,8 @@ fig, ax = plt.subplots()
 df_daily_jumpsup.plot(legend=False, ax=ax)
 df_subset.plot(legend=False, ax=ax, color="r")
 plt.show()
+
+
+## reverse of 'create _sequence' for mae loss
+
+

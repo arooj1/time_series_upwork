@@ -10,6 +10,8 @@ Created on Mon Jan 18 12:32:00 2021
 """
 import numpy as np
 import pandas as pd
+from tensorflow.keras.models import model_from_json
+import os
 
 class test_data:
     '''
@@ -37,26 +39,55 @@ class test_data:
     
     '''
     
-    def __init__(self, training_mean, training_std, training_threshold):
+    def __init__(self, model_name,model_weights, training_mean, training_std, training_threshold):
         self.time_steps = 288
         self.training_mean = training_mean
         self.training_std = training_std
         self.training_threshold = training_threshold
+        self.model = model_name
+        self.weights = model_weights
         
         
     def __call__(self, test_data):
         df_test_value = self.normalize_test(test_data)
         #(test_data - self.training_mean) / self.training_std
         x_test = self.create_sequences(df_test_value.values)
+        print('TEST DATA NORMALIZED')
         print("Test input shape: ", x_test.shape)
         
+        # Load Model 
+        self.loaded_model = self.get_model()
+        
         # predict model outputs
+        
         model_return_values = self.model_predict(x_test)
+        print('PREDICTIONS DONE')
         
         # calculate MAE loss of test dataset
-        mae_loss_values = self.get_MAE_loss(model_return_values)
+        mae_loss_values = self.get_MAE_loss(x_test)
+        anomalies = mae_loss_values > self.training_threshold
+        print("Number of anomaly samples: ", np.sum(anomalies))
+        print('MAE LOSS of TEST DATA Calculated')
+        print('===== PREPARING FINAL OUTPUT =====')
+        final_output = test_data.copy()
+         
+        final_output['Threshold'] = self.training_threshold
+        print('Threshold added')
+        # data i is an anomaly if samples [(i - timesteps + 1) to (i)] are anomalies
+        anomalous_data_indices = []
+        for data_idx in range(self.time_steps - 1, len(df_test_value) - self.time_steps + 1):
+            if np.all(anomalies[data_idx - self.time_steps + 1 : data_idx]):
+                anomalous_data_indices.append(data_idx)
         
-              
+        final_output['MAE'] = self.mae_to_orig_mapping(mae_loss_values, len(test_data))
+        #print('MAE values added')
+        final_output['Anomaly'] = 'NO'
+        final_output['Anomaly'].iloc[anomalous_data_indices] = 'YES'
+        print('Anomaly added')
+        date_string = [str(i.date()) for i in final_output.index]
+        
+        final_output['Date'] = date_string
+        return final_output      
         
     # Generated training sequences for use in the model.
     def create_sequences(self, values):
@@ -71,14 +102,37 @@ class test_data:
         return values
     
     def model_predict(self,values):
-        return self.model.predict(values)
+        return self.loaded_model.predict(values)
     
     def get_MAE_loss(self,values):
     # Get test MAE loss.
-        x_test_pred = model.predict(values)
+        x_test_pred = self.loaded_model.predict(values)
         test_mae_loss = np.mean(np.abs(x_test_pred - values), axis=1)
         test_mae_loss = test_mae_loss.reshape((-1))
         return test_mae_loss
 
+    def get_model(self):
+        json_file = open(self.model, 'r')
+        loaded_model_json = json_file.read()
+        json_file.close()
+        loaded_model = model_from_json(loaded_model_json)
+        # load weights into new model
+        loaded_model.load_weights(self.weights)
+        print("Loaded model from disk")
+        print(loaded_model.summary())
+        return loaded_model
 
-
+    def mae_to_orig_mapping(self, mae_values, map_length):
+        mae_list = list(mae_values)
+        print(len(mae_list), map_length,mae_values.shape[0])
+        mae_map = np.ones(map_length)
+        a = np.arange(self.time_steps, map_length)
+        b = np.arange(mae_values.shape[0])
+        for ai, bi in zip(a,b):
+            if bi == 0:
+                mae_map[bi : ai] = (mae_list[bi:ai])
+            else:
+                mae_map[ai] = (mae_list[bi])
+        
+        return mae_map.T
+        
